@@ -13,24 +13,8 @@
          */
         public function __construct(array $config): void
         {
-            if(isset($config['max']))
-            {
-                //取得メール数の最大値
-                $this->max = $config['max'];
-            }
-
-            if($config['server']  ==='' ||
-               $config['username']==='' ||
-               $config['password']==='' ||
-               empty($config['mailbox'])
-            )
-            {
-                return false;
-            }
-
             $this->config = $config;
         }
-        
                 
         /**
          * imap connect
@@ -79,48 +63,80 @@
             $mailboxes[] = $imap->setActiveMailbox($this->config['mailbox']);
             return $mailboxes;
         }
-
-        private function filter(array $mailList, $start)
+        
+        /**
+         * uids
+         *
+         * @param  mixed $mailList
+         * @param  mixed $start
+         * @return void
+         */
+        private function uids(array $mailList, $start)
         {
-            $result = [];
+            $uids = [];
             foreach($mailList as $mail)
             {
-                if()
+                if($mail['date']>=$start)
                 {
-                    $result[] = $mail['date'];
+                    $uids[] = $mail['uid'];
                 }
             }
+
+            return $uids;
+        }
+
+        private function query($date, array $filters)
+        {
+            $params[] = 'SINCE "' . $date . '"';
+            foreach($filters as $key => $val)
+            {
+                switch(strtolower($key)){
+                    case 'from':
+                        $query = 'FROM "' . $val . '"';
+                        break;
+                    case 'to':
+                        $query = 'TO "' . $val . '"';
+                        break;
+                    case 'subject':
+                        $query = 'SUBJECT "' . $val . '"';
+                        break;
+                    case 'body':
+                        $query = 'BODY "' . $val . '"';
+                        break;
+                    case 'cc':
+                        $query = 'CC "' . $val . '"';
+                    case 'bcc':
+                        $query = 'BCC "' . $val . '"';
+                }
+
+                $params[] = $query;
+            }
+            
+            return $params;
         }
         
         /**
          *
          * @return void
          */
-        public function exec(string $date, string $startUnixtime)
+        public function exec(string $date, string $startUnixtime, $targets)
         {
-            if($date==='' || $startUnixtime==='')
-            {
-                throw new Exception("");
-            }
-
-            if(!is_numeric($interval))
-            {
-                return false; 
-            }
-
-            $startTime = date("Y-m-d", strtotime("-1 minute"));
-
             $imap = $this->connect();
-            $mailboxes = $this->getMailBox($imap);
 
-            $mailList = [];
-            foreach($mailboxes as $mailbox)
+            foreach($targets as $target)
             {
-                $result = $mailbox->search(['SINCE "' . $date . '"'], 0, $this->max);
-                $mailList = array_merge($mailList, $result);
+                $mailboxes = $this->getMailBox($imap);
+
+                $mailList = [];
+                foreach($mailboxes as $mailbox)
+                {
+                    $result = $mailbox->search($querys, 0, $this->max);
+                    $mailList[$mailbox['name']] = array_merge($mailList[$mailbox['name']], $result);
+                }
+    
+                $mailList = $this->between($mailList, $start);
             }
 
-            $mailList = $this->between($mailList, $start);
             $imap->disconnect();
 
             return $mailList;

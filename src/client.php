@@ -6,9 +6,14 @@
     class Client
     {
         private $receive;
-        public function __construct(receiveInterface $receive)
+        private $transmit;
+
+        public function __construct(receiveInterface $receive,
+                                    transmitInterface $transmit
+        )
         {
             $this->receive = $receive;
+            $this->$transmit = $transmit;
         }
 
         //設定ファイル読み込み
@@ -26,50 +31,82 @@
 
             return $config;
         }
-
-        private function configCheck($config)
+        
+        /**
+         * 受信用設定チェック
+         *
+         * @param  mixed $config
+         * @return void
+         */
+        private function receiveValidation($config)
         {
-            //受信用設定チェック
-            if (($config['receive']['protocol']==='imap' ||
-                 $config['receive']['protocol']==='pop3')){
+            if (($config['protocol']==='imap' ||
+                 $config['protocol']==='pop3')){
                 throw new \Exception('メール受信用のプロトコルの指定が間違っています。「imap」または「pop3」を指定して下さい');
             }
 
-            if(!$config['receive']['server']){
+            if(!$config['server']){
                 throw new \Exception('メール受信用のサーバが指定されていません');
             }
 
-            if(!$config['receive']['user']){
+            if(!$config['user']){
                 throw new \Exception('メール受信用のユーザが指定されていません');
             }
 
-            if(!$config['receive']['password']){
+            if(!$config['password']){
                 throw new \Exception('メール受信用のパスワードが指定されていません');
             }
 
-            if(!$config['receive']['interval']){
+            if(!$config['interval']){
                 throw new \Exception('メール受信用のインターバル時間（分）が指定されていません');
             }
 
-            if($config['receive']['target'])===0){
-                throw new \Exception('メール受信用のターゲットが指定されていません');
+            if($config['target'])===0){
+                throw new \Exception('メール受信するターゲットが指定されていません');
             }
 
-            //送信用設定チェック
-            
+            foreach($config['target'] as $target)
+            {
+                if(!$target['name'])
+                {
+                    throw new \Exception('受信メールの名称が指定されていません');
+                }
+
+                if(!$target['mailbox'])
+                {
+                    throw new \Exception('受信メールのメールボックスが指定されていません（name:' . $name . '）');
+                }
+            }
             
             return true;
         }
-
-        private function 
+        
+        /**
+         * 送信用設定チェック
+         *
+         * @param  mixed $config
+         * @return void
+         */
+        private function transmitValidation($config)
+        {
+            foreach($config as $c)
+            {
+                if($config['service']==='chatwork' ||
+                   $config['service']==='line')
+                {
+                    throw new \Exception('送信するサービスが指定されていません');
+                }
+            }
+        }
 
         //メール受信
-        public function receive($configReceive)
+        private function receive($config)
         {
 
-            
-            $date = date("d-M-Y");
-            $startUnixtime = strtotime("-{$config['receive']['interval']} minute");
+            foreach($this->receive as $receive)
+            {
+
+            }
 
             switch($configReceive['type']){
                 case 'imap':
@@ -81,7 +118,7 @@
                     $mailList = $pop3->exec();
                     break;
             }
-           
+
             return $mailList;
         }
 
@@ -91,8 +128,16 @@
             
         }
 
-        public function exec()
+        public function exec($config)
         {
+            try{
+                $this->receiveValidation();
+                $date = date("d-M-Y");
+                $startUnixtime = strtotime("-{$config['receive']['interval']} minute");
 
+                $mailList = $this->receive($config['receive']);
+            }catch(\Exception $e){
+                error_log('[PHP-BELTCONVEYOR-MAIL]' . $e->getMessage());
+            }
         }
     }
