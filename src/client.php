@@ -1,19 +1,13 @@
 <?php
     namespace PhpBeltconveyorMail;
-    use PhpBeltconveyorMail\Receiver;
-    use PhpBeltconveyorMail\Transmitter;
 
     class Client
     {
-        private $receive;
-        private $transmit;
+        private $container;
 
-        public function __construct(receiveInterface $receive,
-                                    transmitInterface $transmit
-        )
+        public function __construct($container)
         {
-            $this->receive = $receive;
-            $this->$transmit = $transmit;
+            $this->container = $container;
         }
 
         //設定ファイル読み込み
@@ -31,97 +25,22 @@
 
             return $config;
         }
-        
-        /**
-         * 受信用設定チェック
-         *
-         * @param  mixed $config
-         * @return void
-         */
-        private function receiveValidation($config)
-        {
-            if (($config['protocol']==='imap' ||
-                 $config['protocol']==='pop3')){
-                throw new \Exception('メール受信用のプロトコルの指定が間違っています。「imap」または「pop3」を指定して下さい');
-            }
-
-            if(!$config['server']){
-                throw new \Exception('メール受信用のサーバが指定されていません');
-            }
-
-            if(!$config['user']){
-                throw new \Exception('メール受信用のユーザが指定されていません');
-            }
-
-            if(!$config['password']){
-                throw new \Exception('メール受信用のパスワードが指定されていません');
-            }
-
-            if(!$config['interval']){
-                throw new \Exception('メール受信用のインターバル時間（分）が指定されていません');
-            }
-
-            if($config['target'])===0){
-                throw new \Exception('メール受信するターゲットが指定されていません');
-            }
-
-            foreach($config['target'] as $target)
-            {
-                if(!$target['name'])
-                {
-                    throw new \Exception('受信メールの名称が指定されていません');
-                }
-
-                if(!$target['mailbox'])
-                {
-                    throw new \Exception('受信メールのメールボックスが指定されていません（name:' . $name . '）');
-                }
-
-                if(!$target['transmit']['service']){
-                    throw new \Exception('送信するサービスが指定されていません');
-                }
-            }
-            
-            return true;
-        }
-        
-        /**
-         * 送信用設定チェック
-         *
-         * @param  mixed $config
-         * @return void
-         */
-        private function transmitValidation($config)
-        {
-            foreach($config as $c)
-            {
-                if($config['service']==='chatwork' ||
-                   $config['service']==='line')
-                {
-                    throw new \Exception('送信するサービスが指定されていません');
-                }
-            }
-        }
 
         //メール受信
-        private function receive($config)
+        private function receive(array $config, string $date, string $startUnixtime)
         {
-
-            foreach($this->receive as $receive)
-            {
-
-            }
-
-            switch($configReceive['type']){
+            $this->container['config'] = $config;
+            switch($config['protocol']){
                 case 'imap':
-                    $imap = new Imap();
-                    $mailList = $imap->exec();
+                    $receive = $this->container['imap'];
                     break;
                 case 'pop3':
-                    $pop3 = new Pop3();
-                    $mailList = $pop3->exec();
+                    //pop3のクラスが作成できたら追加
                     break;
             }
+
+            $receive->validation();
+            $mailList = $receive->exec();
 
             return $mailList;
         }
@@ -132,16 +51,38 @@
             
         }
 
-        public function exec($config)
+        public function exec()
         {
             try{
-                $this->receiveValidation();
-                $date = date("d-M-Y");
-                $startUnixtime = strtotime("-{$config['receive']['interval']} minute");
+                $config = $this->config(); //設定ファイルの取得
+                //メールフィルタ用の日時の取得
+                $startUnixtime = strtotime("-{$config['interval']} minute");
+                $sinceDate = date("d-M-Y", $startUnixtime);
 
-                $mailList = $this->receive($config['receive']);
+                var_dump($startUnixtime);
+                var_dump($sinceDate);
+
+                //メール受信
+                $mailList = $this->receive($config, $sinceDate, $startUnixtime);
             }catch(\Exception $e){
+                echo $e->getMessage();
                 error_log('[PHP-BELTCONVEYOR-MAIL]' . $e->getMessage());
             }
+
+            return $mailList;
         }
     }
+
+    require_once __DIR__ . "/../vendor/autoload.php";
+    require_once __DIR__ . "/receive/receiveInterface.php";
+    require_once __DIR__ . "/receive/imap.php";
+
+
+    $container = new \Pimple\Container();
+
+    $container['imap'] = function ($c) {
+        return new \PhpBeltconveyorMail\Receive\Imap($c['config']);
+    };
+
+    $client = new Client($container);
+    $client->exec();

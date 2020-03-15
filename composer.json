@@ -1,5 +1,6 @@
 {
     "require": {
-        "eden/mail": "^4.0"
+        "eden/mail": "^4.0",
+        "pimple/pimple": "^3.3"
     }
 }
