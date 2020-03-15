@@ -76,6 +76,10 @@
                 {
                     throw new \Exception('受信メールのメールボックスが指定されていません（name:' . $name . '）');
                 }
+
+                if(!$target['transmit']['service']){
+                    throw new \Exception('送信するサービスが指定されていません');
+                }
             }
             
             return true;

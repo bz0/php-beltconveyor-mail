@@ -4,57 +4,59 @@ imapやpop3で受信したメールをLINEやチャットへかんたんに通�
 
 ## 使い方
 
-設定ファイル(JSON形式)に、メールサーバのアカウント情報や送信するチャット・LINEのアカウント情報等を設定してください。  
+設定ファイル(config.json)に、メールサーバのアカウント情報や送信するチャット・LINEのアカウント情報等を設定してください。  
 その後、サーバへこのライブラリをアップロードしcronを設定して下さい。 
 
 ### 設定ファイル
 
 example:  
 
+config.json  
 ```
 {
-    "receive": {
-        "type": "[メールプロトコル]", //require
-        "server": "[メールサーバドメイン]", //require
-        "user": "[メールサーバのユーザ名]", //require
-        "password": "[メールサーバのパスワード", //require
-        "interval": "[実行間隔]",//require
-        "filter": [ //チャット等へ送信するメールをフィルタ
-            {
-                "name": "受信メールの名称（送信用で利用）",//require
-                "mailbox": [
-                    "[メールボックスの指定]"//require
-                ],
-                "from": "", //option
-                "to": "", //option
-                "body": "", //option
-                "subject": "", //option
-            },
-            {
-                "name": "受信メールの名称（送信用で利用）",//require
-                "mailbox": [
-                    "[メールボックスの指定]"//require
-                ],
-                "from": "", //option
-                "to": "", //option
-                "body": "", //option
-                "subject": "", //option
-            }
-        ],
-        "interval": 30
-    },
-    "transmit": [
+    "protocol": "[メールプロトコル]", //require
+    "server": "[メールサーバドメイン]", //require
+    "user": "[メールサーバのユーザ名]", //require
+    "password": "[メールサーバのパスワード", //require
+    "interval": "[実行間隔]",//require
+    "target": [ //チャット等へ送信する対象を指定
         {
-            "name": "送信用の名称（受信メールの名称とセット）",
-            "type": "chatwork",
-            "room_id": ""
+            "mailbox": [
+                "[メールボックスの指定]"//require
+            ],
+            "mailfilter": {
+                "from": "", //option
+                "to": "", //option
+                "body": "", //option
+                "subject": "", //option
+                "bcc": "", //option
+                "cc": "" //option
+            },
+            "transmit":{
+                "service": "chatwork",//require
+                "type": "message",
+                "room_id": ""
+            }
         },
         {
-            "name": "送信用の名称（受信メールの名称とセット）",
-            "type": "line",
-            "room_id": ""
+            "mailbox": [
+                "[メールボックスの指定]"//require
+            ],
+            "mailfilter": {
+                "from": "", //option
+                "to": "", //option
+                "body": "", //option
+                "subject": "", //option
+                "bcc": "", //option
+                "cc": "" //option
+            },
+            "transmit":{
+                "type": "chatwork",
+                "room_id": ""
+            }
         }
-    ]
+    ],
+    "interval": 30
 }
 ```
 
@@ -62,15 +64,17 @@ example:
 
 |必須|名称|内容|メモ|
 |---|---|---|---|
-|○|type|メールプロトコル（imap or pop3）|
+|○|protocol|メールプロトコル（imap or pop3）|
 |○|server|メールサーバのドメイン|
 |○|user|メールサーバのユーザ|
 |○|password|メールサーバのパスワード|
-|○|interval|実行間隔|
+|○|interval|実行間隔|cronの設定と合わせる|
 |○|target->name|受信メールのフィルタ名（送信用と対になる）|
 |○|target->mailbox|受信メールボックス|
 |-|target->from|fromで絞込|
 |-|target->to|toで絞込|
 |-|target->subject|subjectで絞込|
 |-|target->body|bodyで絞込|
-
+|-|target->cc|ccで絞込|
+|-|target->bcc|bccで絞込|
+|○|transmit->service|送信するサービス（LINEやチャット等）|
